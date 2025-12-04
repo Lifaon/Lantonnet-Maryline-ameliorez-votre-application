@@ -8,6 +8,7 @@ import com.openclassrooms.tourguide.user.UserReward;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -15,7 +16,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
@@ -42,7 +42,7 @@ public class TourGuideService {
 	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
 		this.gpsUtil = gpsUtil;
 		this.rewardsService = rewardsService;
-		
+
 		Locale.setDefault(Locale.US);
 
 		if (testMode) {
@@ -70,7 +70,7 @@ public class TourGuideService {
 	}
 
 	public List<User> getAllUsers() {
-		return internalUserMap.values().stream().collect(Collectors.toList());
+		return new ArrayList<>(internalUserMap.values());
 	}
 
 	public void addUser(User user) {
@@ -96,14 +96,11 @@ public class TourGuideService {
 	}
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
-		List<Attraction> nearbyAttractions = new ArrayList<>();
-		for (Attraction attraction : gpsUtil.getAttractions()) {
-			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
-				nearbyAttractions.add(attraction);
-			}
-		}
-
-		return nearbyAttractions;
+		List<Attraction> attractions =  gpsUtil.getAttractions();
+		attractions.sort(Comparator.comparing(attraction ->
+                rewardsService.getDistance(attraction, visitedLocation.location))
+        );
+        return attractions.subList(0, 5);
 	}
 
 	private void addShutDownHook() {
@@ -115,9 +112,9 @@ public class TourGuideService {
 	}
 
 	/**********************************************************************************
-	 * 
+	 *
 	 * Methods Below: For Internal Testing
-	 * 
+	 *
 	 **********************************************************************************/
 	private static final String tripPricerApiKey = "test-server-api-key";
 	// Database connection will be used for external users, but for testing purposes
