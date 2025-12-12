@@ -16,6 +16,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
@@ -53,6 +56,12 @@ public class TourGuideService {
 		}
 		tracker = new Tracker(this);
 		addShutDownHook();
+
+		preloadAllRewardPoints();
+	}
+
+	public void preloadAllRewardPoints() {
+		rewardsService.preloadUsersRewardPoints(getAllUsers());
 	}
 
 	public List<UserReward> getUserRewards(User user) {
@@ -60,9 +69,9 @@ public class TourGuideService {
 	}
 
 	public VisitedLocation getUserLocation(User user) {
-		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
-				: trackUserLocation(user);
-		return visitedLocation;
+		if (user.getVisitedLocations().isEmpty())
+			return trackUserLocation(user);
+		return user.getLastVisitedLocation();
 	}
 
 	public User getUser(String userName) {
@@ -93,6 +102,25 @@ public class TourGuideService {
 		user.addToVisitedLocations(visitedLocation);
 		rewardsService.calculateRewards(user);
 		return visitedLocation;
+	}
+
+	public void trackUsersLocations(List<User> users) {
+		ThreadPoolExecutor executor = null;
+		List<CompletableFuture<VisitedLocation>> futures = new ArrayList<>();
+		try {
+			executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.min(users.size(), 10000));
+			for (User user : users) {
+				futures.add(CompletableFuture.supplyAsync(() -> trackUserLocation(user), executor));
+			}
+		} finally {
+			if (executor != null)
+				executor.shutdown();
+		}
+		futures.forEach(CompletableFuture::join);
+	}
+
+	public void trackAllUsersLocations() {
+		trackUsersLocations(getAllUsers());
 	}
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {

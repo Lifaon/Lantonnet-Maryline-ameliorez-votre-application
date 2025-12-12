@@ -16,10 +16,11 @@ public class User {
 	private String phoneNumber;
 	private String emailAddress;
 	private Date latestLocationTimestamp;
-	private final List<VisitedLocation> visitedLocations = new CopyOnWriteArrayList<>(); // Fixes ConcurrentModificationException
-	private final List<UserReward> userRewards = new ArrayList<>();
+	private final List<VisitedLocation> visitedLocations = new CopyOnWriteArrayList<>();
+	private final List<UserReward> userRewards = new CopyOnWriteArrayList<>();
 	private UserPreferences userPreferences = new UserPreferences();
 	private List<Provider> tripDeals = new ArrayList<>();
+
 	public User(UUID userId, String userName, String phoneNumber, String emailAddress) {
 		this.userId = userId;
 		this.userName = userName;

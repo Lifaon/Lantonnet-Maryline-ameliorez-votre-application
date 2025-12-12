@@ -3,8 +3,8 @@ package com.openclassrooms.tourguide;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.openclassrooms.tourguide.pojo.NearbyAttraction;
 import com.openclassrooms.tourguide.service.RewardsService;
+import gpsUtil.location.Location;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,16 +37,21 @@ public class TourGuideController {
     public VisitedLocation getLocation(@RequestParam String userName) {
     	return tourGuideService.getUserLocation(getUser(userName));
     }
-    
-    //  TODO: Change this method to no longer return a List of Attractions.
- 	//  Instead: Get the closest five tourist attractions to the user - no matter how far away they are.
- 	//  Return a new JSON object that contains:
-    	// Name of Tourist attraction, 
-        // Tourist attractions lat/long, 
-        // The user's location lat/long, 
-        // The distance in miles between the user's location and each of the attractions.
-        // The reward points for visiting each Attraction.
-        //    Note: Attraction reward points can be gathered from RewardsCentral
+
+	public static class NearbyAttraction {
+		public final String name;		// Name of attraction
+		public final Location location; // The attraction lat/long
+		public Location userLocation; 	// The user's location lat/long
+		public Double distance; 		// The distance in miles between the user's location and the attraction
+		public Integer rewardPoints;	// The reward points for visiting the attraction
+
+		public NearbyAttraction(Attraction attraction) {
+			name = attraction.attractionName;
+			location = new Location(attraction.latitude, attraction.longitude);
+		}
+	}
+
+ 	//  Gets the closest five tourist attractions to the user - no matter how far away they are
     @RequestMapping("/getNearbyAttractions") 
     public List<NearbyAttraction> getNearbyAttractions(@RequestParam String userName) {
         List<NearbyAttraction> nearbyAttractions = new ArrayList<>();
