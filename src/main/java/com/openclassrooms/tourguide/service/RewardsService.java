@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -42,6 +43,7 @@ public class RewardsService {
 	private final ThreadPoolExecutor calcRewardsExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(10000);
 	private final List<CompletableFuture<Void>> calcRewardsFutures = new ArrayList<>();
 	private final Lock calcRewardsLock = new ReentrantLock();
+	private Long nbCompletedSinceLastWait = 0L;
 
 	// Preloading
 	private static final boolean enablePreloading = false;
@@ -92,7 +94,21 @@ public class RewardsService {
 
 	public void waitRewardCalculations() {
 		calcRewardsLock.lock();
+		final CompletableFuture<Void> progression = CompletableFuture.supplyAsync(() -> {
+			try {
+				while (!calcRewardsExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+					long completed = calcRewardsExecutor.getCompletedTaskCount() - nbCompletedSinceLastWait;
+					log.info("Reward calculations : Still running, {}% completed...",
+							completed * 100 / calcRewardsFutures.size());
+				}
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+			return null;
+		});
 		calcRewardsFutures.forEach(CompletableFuture::join);
+		progression.cancel(true);
+		nbCompletedSinceLastWait = calcRewardsExecutor.getCompletedTaskCount();
 		calcRewardsLock.unlock();
 	}
 

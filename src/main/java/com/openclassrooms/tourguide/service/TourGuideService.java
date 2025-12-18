@@ -19,6 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
@@ -106,7 +107,7 @@ public class TourGuideService {
 
 	public void trackUsersLocations(List<User> users) {
 		ThreadPoolExecutor executor = null;
-		List<CompletableFuture<VisitedLocation>> futures = new ArrayList<>();
+		final List<CompletableFuture<VisitedLocation>> futures = new ArrayList<>();
 		try {
 			executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.min(users.size(), 10000));
 			for (User user : users) {
@@ -116,7 +117,20 @@ public class TourGuideService {
 			if (executor != null)
 				executor.shutdown();
 		}
+		final ThreadPoolExecutor finalExecutor = executor;
+		final CompletableFuture<Void> progression = CompletableFuture.supplyAsync(() -> {
+			try {
+				while (!finalExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+					logger.debug("Tracking : Still running, {}% completed...",
+							finalExecutor.getCompletedTaskCount() * 100 / futures.size());
+				}
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+			return null;
+		});
 		futures.forEach(CompletableFuture::join);
+		progression.cancel(true);
 	}
 
 	public void trackAllUsersLocations() {
