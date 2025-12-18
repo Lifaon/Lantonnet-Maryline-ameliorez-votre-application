@@ -40,7 +40,7 @@ public class RewardsService {
 	private final RewardCentral rewardsCentral;
 
 	// Calculate Rewards
-	private final ThreadPoolExecutor calcRewardsExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(10000);
+	private final ThreadPoolExecutor calcRewardsExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1000);
 	private final List<CompletableFuture<Void>> calcRewardsFutures = new ArrayList<>();
 	private final Lock calcRewardsLock = new ReentrantLock();
 	private Long nbCompletedSinceLastWait = 0L;
@@ -98,7 +98,7 @@ public class RewardsService {
 			try {
 				while (!calcRewardsExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
 					long completed = calcRewardsExecutor.getCompletedTaskCount() - nbCompletedSinceLastWait;
-					log.info("Reward calculations : Still running, {}% completed...",
+					log.debug("Reward calculations : Still running, {}% completed...",
 							completed * 100 / calcRewardsFutures.size());
 				}
 			} catch (InterruptedException e) {

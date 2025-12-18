@@ -109,7 +109,7 @@ public class TourGuideService {
 		ThreadPoolExecutor executor = null;
 		final List<CompletableFuture<VisitedLocation>> futures = new ArrayList<>();
 		try {
-			executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.min(users.size(), 10000));
+			executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.min(users.size(), 1000));
 			for (User user : users) {
 				futures.add(CompletableFuture.supplyAsync(() -> trackUserLocation(user), executor));
 			}
