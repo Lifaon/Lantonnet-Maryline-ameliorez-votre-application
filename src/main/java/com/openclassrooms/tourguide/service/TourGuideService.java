@@ -139,14 +139,18 @@ public class TourGuideService {
 		trackUsersLocations(getAllUsers());
 	}
 
-	public List<NearbyAttraction> getNearByAttractions(VisitedLocation visitedLocation) {
+	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
 		List<Attraction> attractions =  gpsUtil.getAttractions();
 		attractions.sort(Comparator.comparing(attraction ->
                 rewardsService.getDistance(attraction, visitedLocation.location))
         );
-        attractions = attractions.subList(0, 5);
-		List<NearbyAttraction> nearbyAttractions = new ArrayList<>();
-		for (Attraction attraction : attractions) {
+        return attractions.subList(0, 5);
+	}
+
+	public List<NearbyAttraction> getNearByAttractionsFormatted(User user) {
+		final VisitedLocation visitedLocation = user.getLastVisitedLocation();
+		final List<NearbyAttraction> nearbyAttractions = new ArrayList<>();
+		for (Attraction attraction : getNearByAttractions(visitedLocation)) {
 			NearbyAttraction nearbyAttraction = new NearbyAttraction(attraction);
 			nearbyAttraction.userLocation = visitedLocation.location;
 			nearbyAttraction.distance = rewardsService.getDistance(attraction, visitedLocation.location);

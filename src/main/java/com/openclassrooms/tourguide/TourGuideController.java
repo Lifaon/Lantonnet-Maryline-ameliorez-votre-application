@@ -1,6 +1,5 @@
 package com.openclassrooms.tourguide;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +34,7 @@ public class TourGuideController {
  	//  Gets the closest five tourist attractions to the user - no matter how far away they are
     @RequestMapping("/getNearbyAttractions") 
     public List<NearbyAttraction> getNearbyAttractions(@RequestParam String userName) {
-        return tourGuideService.getNearByAttractions(getLocation(userName));
+        return tourGuideService.getNearByAttractionsFormatted(getUser(userName));
     }
     
     @RequestMapping("/getRewards") 
