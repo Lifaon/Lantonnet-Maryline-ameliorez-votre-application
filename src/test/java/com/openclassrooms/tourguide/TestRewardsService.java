@@ -37,7 +37,7 @@ public class TestRewardsService {
 		rewardsService.waitRewardCalculations();
 		List<UserReward> userRewards = user.getUserRewards();
 		tourGuideService.tracker.stopTracking();
-		assertEquals(1, userRewards.size());
+		assertTrue(userRewards.size() == 1);
 	}
 
 	@Test

@@ -82,6 +82,7 @@ public class User {
 		return userRewards;
 	}
 
+	// Returns whether the User was already rewarded for given Attraction
 	public boolean notYetRewardedFor(Attraction attraction) {
 		return userRewards.stream().noneMatch(r -> r.attraction.attractionName.equals(attraction.attractionName));
 	}

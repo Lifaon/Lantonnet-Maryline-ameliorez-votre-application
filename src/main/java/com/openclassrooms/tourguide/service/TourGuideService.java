@@ -114,6 +114,7 @@ public class TourGuideService {
 				executor.shutdown();
 		}
 		final ThreadPoolExecutor finalExecutor = executor;
+		// Only for logging
 		final CompletableFuture<Void> progression = CompletableFuture.supplyAsync(() -> {
 			try {
 				while (!finalExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
@@ -125,6 +126,7 @@ public class TourGuideService {
 			}
 			return null;
 		});
+		// Wait for ALL tasks to complete
 		futures.forEach(CompletableFuture::join);
 		progression.cancel(true);
 	}
