@@ -53,15 +53,16 @@ public class TestPerformance {
 		// Users should be incremented up to 100,000, and test finishes within 15
 		// minutes
 		InternalTestHelper.setInternalUserNumber(100000);
-		// Don't track twice at the same time
-		InternalTestHelper.setDisableTracking(true);
 		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
+		// Don't track twice at the same time
+		tourGuideService.tracker.stopTracking();
 
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
 		tourGuideService.trackAllUsersLocations();
 		stopWatch.stop();
 
+		// Cancel running threads before ending test
 		rewardsService.cancelPreloading();
 
 		System.out.println("highVolumeTrackLocation: Time Elapsed: "
@@ -93,6 +94,8 @@ public class TestPerformance {
 			assertFalse(user.getUserRewards().isEmpty());
 		}
 		stopWatch.stop();
+
+		// Cancel running threads before ending test
 		tourGuideService.tracker.stopTracking();
 		rewardsService.cancelPreloading();
 
