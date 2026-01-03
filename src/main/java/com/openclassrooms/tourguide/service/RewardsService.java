@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -31,11 +30,12 @@ import com.openclassrooms.tourguide.user.UserReward;
 public class RewardsService {
     private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
 
+	private Logger logger = LoggerFactory.getLogger(RewardsService.class);
+
 	// proximity in miles
-    private static final int defaultProximityBuffer = 10;
-	private static final Logger log = LoggerFactory.getLogger(RewardsService.class);
+    private int defaultProximityBuffer = 10;
 	private int proximityBuffer = defaultProximityBuffer;
-	private static final int attractionProximityRange = 200;
+	private int attractionProximityRange = 200;
 	private final GpsUtil gpsUtil;
 	private final RewardCentral rewardsCentral;
 
@@ -43,18 +43,7 @@ public class RewardsService {
 	private final ThreadPoolExecutor calcRewardsExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1000);
 	private final List<CompletableFuture<Void>> calcRewardsFutures = new ArrayList<>();
 	private final Lock calcRewardsLock = new ReentrantLock();
-	private Long nbCompletedSinceLastWait = 0L;
-
-	// Preloading
-	private static final boolean enablePreloading = false;
-	private final List<CompletableFuture<Void>> preloadingFutures = new ArrayList<>();
-	private static class UserPoints {
-		public Map<String, Integer> map = new HashMap<>();
-		public ReadWriteLock lock = new ReentrantReadWriteLock();
-	}
-	private final Map<UUID, UserPoints> globalPointsMap = new HashMap<>();
-	private final ReadWriteLock globalPointsLock = new ReentrantReadWriteLock();
-
+	private Long nbCompletedSinceLastWait = 0L;	// Used for completion percentage logging
 
 	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
 		this.gpsUtil = gpsUtil;
@@ -98,7 +87,7 @@ public class RewardsService {
 			try {
 				while (!calcRewardsExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
 					long completed = calcRewardsExecutor.getCompletedTaskCount() - nbCompletedSinceLastWait;
-					log.debug("Reward calculations : Still running, {}% completed...",
+					logger.debug("Reward calculations : Still running, {}% completed...",
 							completed * 100 / calcRewardsFutures.size());
 				}
 			} catch (InterruptedException e) {
@@ -120,92 +109,9 @@ public class RewardsService {
 		return getDistance(attraction, visitedLocation.location) <= proximityBuffer;
 	}
 
-	private int getUnloadedPoints(UUID attrId, UUID userId) {
-		return rewardsCentral.getAttractionRewardPoints(attrId, userId);
-	}
-
-	private final AtomicInteger nbPreloaded = new AtomicInteger(0);
-	private final AtomicInteger nbSync = new AtomicInteger(0);
-
-	public int getNbSync() {
-		return nbSync.get();
-	}
-	public int getNbPreloaded() {
-		return nbPreloaded.get();
-	}
-
 	public int getRewardPoints(Attraction attraction, User user) {
 		UUID userId = user.getUserId();
-		if (enablePreloading) {
-			try {
-				globalPointsLock.readLock().lock();
-				if (globalPointsMap.containsKey(userId)) {
-					UserPoints userPoints = globalPointsMap.get(userId);
-					try {
-						userPoints.lock.readLock().lock();
-						if (userPoints.map.containsKey(attraction.attractionName)) {
-							nbPreloaded.getAndIncrement();
-							return userPoints.map.get(attraction.attractionName);
-						}
-					} finally {
-						userPoints.lock.readLock().unlock();
-					}
-				}
-			} finally {
-				globalPointsLock.readLock().unlock();
-			}
-			nbSync.getAndIncrement();
-		}
-		return getUnloadedPoints(attraction.attractionId, userId);
-	}
-
-	private Void preloadUserRewardPoints(User user) {
-		UUID userId = user.getUserId();
-		UserPoints userPoints;
-		try {
-			globalPointsLock.writeLock().lock();
-			if (!globalPointsMap.containsKey(userId)) {
-				globalPointsMap.put(userId, new UserPoints());
-			}
-			userPoints = globalPointsMap.get(userId);
-		} finally {
-			globalPointsLock.writeLock().unlock();
-		}
-		List<Attraction> attractions = gpsUtil.getAttractions();
-
-		for (Attraction attraction : attractions) {
-			// Time-consuming
-			int points = getUnloadedPoints(attraction.attractionId, userId);
-			try {
-				userPoints.lock.writeLock().lock();
-				userPoints.map.put(attraction.attractionName, points);
-			} finally {
-				userPoints.lock.writeLock().unlock();
-			}
-
-		}
-		return null;
-	}
-
-	public void preloadUsersRewardPoints(List<User> users) {
-		if (!enablePreloading || users.isEmpty())
-			return;
-		ThreadPoolExecutor executor = null;
-		// Processing
-		try {
-			executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.min(users.size(), 10000));
-			for (User user : users) {
-				preloadingFutures.add(CompletableFuture.supplyAsync(() -> preloadUserRewardPoints(user), executor));
-			}
-		} finally {
-			if (executor != null)
-				executor.shutdown();
-		}
-	}
-
-	public void cancelPreloading() {
-		preloadingFutures.forEach(f -> f.cancel(true));
-		preloadingFutures.clear();
+		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, userId);
 	}
 
 	public double getDistance(Location loc1, Location loc2) {

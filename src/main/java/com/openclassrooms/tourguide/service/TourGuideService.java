@@ -1,7 +1,6 @@
 package com.openclassrooms.tourguide.service;
 
 import com.openclassrooms.tourguide.NearbyAttraction;
-import com.openclassrooms.tourguide.TourGuideController;
 import com.openclassrooms.tourguide.helper.InternalTestHelper;
 import com.openclassrooms.tourguide.tracker.Tracker;
 import com.openclassrooms.tourguide.user.User;
@@ -22,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
@@ -59,12 +59,6 @@ public class TourGuideService {
 		}
 		tracker = new Tracker(this);
 		addShutDownHook();
-
-		preloadAllRewardPoints();
-	}
-
-	public void preloadAllRewardPoints() {
-		rewardsService.preloadUsersRewardPoints(getAllUsers());
 	}
 
 	public List<UserReward> getUserRewards(User user) {
@@ -72,9 +66,9 @@ public class TourGuideService {
 	}
 
 	public VisitedLocation getUserLocation(User user) {
-		if (user.getVisitedLocations().isEmpty())
-			return trackUserLocation(user);
-		return user.getLastVisitedLocation();
+		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
+				: trackUserLocation(user);
+		return visitedLocation;
 	}
 
 	public User getUser(String userName) {
@@ -82,7 +76,7 @@ public class TourGuideService {
 	}
 
 	public List<User> getAllUsers() {
-		return new ArrayList<>(internalUserMap.values());
+		return internalUserMap.values().stream().collect(Collectors.toList());
 	}
 
 	public void addUser(User user) {
@@ -140,7 +134,7 @@ public class TourGuideService {
 	}
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
-		List<Attraction> attractions =  gpsUtil.getAttractions();
+		List<Attraction> attractions = gpsUtil.getAttractions();
 		attractions.sort(Comparator.comparing(attraction ->
                 rewardsService.getDistance(attraction, visitedLocation.location))
         );

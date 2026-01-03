@@ -62,9 +62,6 @@ public class TestPerformance {
 		tourGuideService.trackAllUsersLocations();
 		stopWatch.stop();
 
-		// Cancel running threads before ending test
-		rewardsService.cancelPreloading();
-
 		System.out.println("highVolumeTrackLocation: Time Elapsed: "
 				+ TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime()) + " seconds.");
 		assertTrue(TimeUnit.MINUTES.toSeconds(15) >= TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime()));
@@ -94,15 +91,10 @@ public class TestPerformance {
 			assertFalse(user.getUserRewards().isEmpty());
 		}
 		stopWatch.stop();
-
-		// Cancel running threads before ending test
 		tourGuideService.tracker.stopTracking();
-		rewardsService.cancelPreloading();
 
 		System.out.println("highVolumeGetRewards: Time Elapsed: " + TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime())
 				+ " seconds.");
-		System.out.println("Preloaded: " + rewardsService.getNbPreloaded());
-		System.out.println("Not preloaded:  " + rewardsService.getNbSync());
 		assertTrue(TimeUnit.MINUTES.toSeconds(20) >= TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime()));
 	}
 
